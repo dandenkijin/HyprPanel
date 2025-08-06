@@ -6,8 +6,8 @@ type TLPProfile = 'ac' | 'battery' | 'usb' | 'unknown';
 
 class TLP extends Service {
     static {
-        Service.register(this, {
-            'changed': ['string'],
+        Service.register(TLP, {
+            'profile-changed': ['string'],
         });
     }
 
@@ -15,9 +15,15 @@ class TLP extends Service {
     #activeProfile: TLPProfile = 'unknown';
     #requestedProfile: TLPProfile | null = null;
     #powerSourcePaths = [
+        // Common AC adapter paths
         '/sys/class/power_supply/AC/online',
         '/sys/class/power_supply/ACAD/online',
         '/sys/class/power_supply/ADP1/online',
+        // USB PD paths
+        '/sys/class/power_supply/ADP0/online',
+        '/sys/class/power_supply/usb/online',
+        '/sys/class/power_supply/usb1/online',
+        '/sys/class/power_supply/typec/online',
     ];
     #batteryStatusPaths = [
         '/sys/class/power_supply/BAT0/status',
@@ -44,6 +50,7 @@ class TLP extends Service {
     }
 
     get activeProfile(): TLPProfile {
+        this.emit('profile-changed', this.#activeProfile);
         return this.#activeProfile;
     }
 
@@ -195,7 +202,14 @@ class TLP extends Service {
     async #updateProfile(): Promise<void> {
         if (!this.#isTLPAvailable) {
             this.#activeProfile = 'unknown';
-            this.emit('changed');
+            this.emit('profile-changed');
+            return;
+        }
+
+        // Check if we have a manually requested profile
+        if (this.#requestedProfile) {
+            this.#activeProfile = this.#requestedProfile;
+            this.emit('profile-changed');
             return;
         }
 
