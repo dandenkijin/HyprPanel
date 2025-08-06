@@ -34,10 +34,8 @@
     color: if($bar-menus-monochrome, $bar-menus-listitems-passive, $bar-menus-menu-battery-listitems-passive);
     margin-bottom: 0.5em;
 
-    label {
-      margin-left: 1em;
-    }
-
+    // Ensure icon and text colors are driven by state consistently
+    .menu-button-icon,
     image {
       font-size: 1.3em;
       min-width: 1em;
@@ -45,13 +43,21 @@
       color: if($bar-menus-monochrome, $bar-menus-icons-passive, $bar-menus-menu-battery-icons-passive);
     }
 
+    .menu-button-name,
+    label {
+      margin-left: 1em;
+      color: if($bar-menus-monochrome, $bar-menus-text, $bar-menus-menu-battery-text);
+    }
+
     &:hover {
       color: if($bar-menus-monochrome, $bar-menus-listitems-active, $bar-menus-menu-battery-listitems-active);
 
+      .menu-button-name,
       label {
-        color: if($bar-menus-monochrome, $bar-menus-icons-active, $bar-menus-menu-battery-icons-active);
+        color: if($bar-menus-monochrome, $bar-menus-listitems-active, $bar-menus-menu-battery-listitems-active);
       }
 
+      .menu-button-icon,
       image {
         color: if($bar-menus-monochrome, $bar-menus-icons-active, $bar-menus-menu-battery-icons-active);
       }
@@ -60,6 +66,12 @@
     &.active {
       color: if($bar-menus-monochrome, $bar-menus-listitems-active, $bar-menus-menu-battery-listitems-active);
 
+      .menu-button-name,
+      label {
+        color: if($bar-menus-monochrome, $bar-menus-listitems-active, $bar-menus-menu-battery-listitems-active);
+      }
+
+      .menu-button-icon,
       image {
         color: if($bar-menus-monochrome, $bar-menus-icons-active, $bar-menus-menu-battery-icons-active);
       }

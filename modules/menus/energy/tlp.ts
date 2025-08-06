@@ -16,9 +16,11 @@ interface Profile {
 
 const TLP = (tlp: typeof TLPType) => {
     const profiles: Profile[] = [
-        { name: 'ac', displayName: 'AC Power', icon: 'ac-adapter' },
-        { name: 'battery', displayName: 'Battery', icon: 'battery-full' },
-        { name: 'usb', displayName: 'USB Power', icon: 'usb' },
+        // Use themed icon names known to exist on most icon themes
+        { name: 'ac', displayName: 'AC Power', icon: 'ac-adapter-symbolic' },
+        { name: 'battery', displayName: 'Battery', icon: 'battery-full-symbolic' },
+        // Use a more widely available USB icon; plain 'usb' may not exist in your theme
+        { name: 'usb', displayName: 'USB Power', icon: 'drive-removable-media-usb-symbolic' },
     ];
 
     // Track loading state for each profile button
@@ -53,11 +55,34 @@ const TLP = (tlp: typeof TLPType) => {
                               label: '⟳',
                               className: 'menu-button-icon spinning',
                           })
-                        : Icon({
-                              className: 'menu-button-icon',
-                              icon: profile.icon,
-                              size: 16,
-                          }),
+                        : (() => {
+                              const iconWidget = Icon({
+                                  className: 'menu-button-icon',
+                                  icon: profile.icon,
+                                  size: 16,
+                              });
+                              // Fallback to a guaranteed unicode label if the named icon is missing
+                              iconWidget.connect('notify::icon', (icon) => {
+                                  // When AGS cannot resolve a name, icon.icon becomes empty
+                                  if (!icon.icon) {
+                                      const parent = iconWidget.get_parent() as GtkWidget | null;
+                                      if (parent) {
+                                          const label = Label({
+                                              className: 'menu-button-icon',
+                                              label:
+                                                  profile.name === 'ac'
+                                                      ? '⚡'
+                                                      : profile.name === 'battery'
+                                                      ? '🔋'
+                                                      : '🔌', // USB fallback glyph
+                                          });
+                                          parent.add(label);
+                                          iconWidget.destroy();
+                                      }
+                                  }
+                              });
+                              return iconWidget;
+                          })(),
                     // Name
                     Label({
                         className: 'menu-button-name',
@@ -93,17 +118,19 @@ const TLP = (tlp: typeof TLPType) => {
         switch (profile) {
             case 'ac':
                 return {
-                    icon: 'ac-adapter',
+                    // Generic power icon that exists broadly
+                    icon: 'power-profile-performance',
                     description: 'Connected to AC power',
                 };
             case 'usb':
                 return {
-                    icon: 'usb',
+                    // Prefer a more common removable/media icon
+                    icon: 'media-removable',
                     description: 'Connected via USB PD',
                 };
             case 'battery':
                 return {
-                    icon: 'battery-full',
+                    icon: 'battery',
                     description: 'Running on battery',
                 };
             default:
@@ -126,6 +153,7 @@ const TLP = (tlp: typeof TLPType) => {
                     children: [
                         Icon({
                             className: 'menu-button-icon',
+                            // Ensure header icon uses symbolic too for correct recoloring
                             icon: getPowerSourceInfo().icon,
                             size: 16,
                         }),
@@ -198,13 +226,44 @@ const TLP = (tlp: typeof TLPType) => {
         ])],
     });
 
-    // Listen for profile changes and update the UI
-    tlp.connect('profile-changed', () => {
-        // Update header description text
+    // Refresh header and list based on current tlp state
+    const refreshUI = () => {
         const info = getPowerSourceInfo();
 
         // header -> [menu-label-container, menu-items-section]
         const headerSection = container.children?.[0] as GtkWidget | undefined;
+        const headerLabelContainer = headerSection?.children?.[0] as GtkWidget | undefined; // menu-label-container
+        const headerLabelBox = headerLabelContainer?.children?.[0] as GtkWidget | undefined; // menu-label
+        const headerIcon = headerLabelBox?.children?.[0] as GtkWidget & {
+            icon?: string;
+            connect?: (signal: string, cb: (iconObj: { icon?: string }) => void) => void;
+            get_parent?: () => GtkWidget | null;
+            destroy?: () => void;
+        } | undefined;
+
+        if (headerIcon && 'icon' in headerIcon) {
+            // Try to set named icon first
+            (headerIcon as unknown as { icon: string }).icon = info.icon;
+
+            // Attach a fallback if the icon name is missing in the theme
+            headerIcon.connect?.('notify::icon', (iconObj: { icon?: string }) => {
+                if (!iconObj.icon) {
+                    const parent = headerIcon.get_parent?.() as GtkWidget | null;
+                    if (parent && 'remove' in parent && 'add' in parent) {
+                        const fallback = Label({
+                            className: 'menu-button-icon',
+                            label: tlp.activeProfile === 'ac' ? '⚡' : tlp.activeProfile === 'battery' ? '🔋' : '🔌',
+                        });
+                        // Remove the broken icon and add the fallback label using the GTK container API
+                        // @ts-ignore remove/add exist on GTK containers in AGS
+                        (parent as unknown as { remove: (w: GtkWidget) => void; add: (w: GtkWidget) => void }).remove(headerIcon as unknown as GtkWidget);
+                        // @ts-ignore see above
+                        (parent as unknown as { remove: (w: GtkWidget) => void; add: (w: GtkWidget) => void }).add(fallback as unknown as GtkWidget);
+                    }
+                }
+            });
+        }
+
         const headerContent = headerSection?.children?.[1] as GtkWidget | undefined;
         const activeRow = headerContent?.children?.[0] as GtkWidget | undefined;
         const activeValue = activeRow?.children?.[1] as unknown as { label: string } | undefined;
@@ -222,7 +281,6 @@ const TLP = (tlp: typeof TLPType) => {
                 child?: { children?: Array<{ label?: string }> };
             };
 
-            // Button is the direct child, its label is at child.children[1]
             const labelText = btn.child?.children?.[1]?.label as string | undefined;
             if (!labelText) continue;
 
@@ -232,9 +290,14 @@ const TLP = (tlp: typeof TLPType) => {
             const isActive = tlp.activeProfile === buttonProfile.name;
             btn.toggleClassName?.('active', isActive);
         }
-    });
+    };
+
+    // Listen for both profile-changed and generic changed (service emits both in different paths)
+    tlp.connect('profile-changed', refreshUI);
+    tlp.connect('changed', refreshUI);
 
     return container;
 };
 
 export default TLP;
+

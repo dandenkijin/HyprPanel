@@ -8,6 +8,7 @@ class TLP extends Service {
     static {
         Service.register(TLP, {
             'profile-changed': ['string'],
+            // 'changed' is a generic signal with no args in AGS; keep it zero-arg to match runtime expectations
         });
     }
 
@@ -50,7 +51,6 @@ class TLP extends Service {
     }
 
     get activeProfile(): TLPProfile {
-        this.emit('profile-changed', this.#activeProfile);
         return this.#activeProfile;
     }
 
@@ -117,6 +117,9 @@ class TLP extends Service {
             this.#requestedProfile = profile;
             // Update immediately to reflect the change
             await this.#updateProfile();
+
+            // Clear the requested profile after reflecting it, so auto-detect can resume
+            this.#requestedProfile = null;
             return true;
         } catch (error) {
             console.error('Failed to set TLP profile:', error);
@@ -201,15 +204,25 @@ class TLP extends Service {
 
     async #updateProfile(): Promise<void> {
         if (!this.#isTLPAvailable) {
+            const prev = this.#activeProfile;
             this.#activeProfile = 'unknown';
-            this.emit('profile-changed');
+            if (prev !== this.#activeProfile) {
+                // profile-changed requires one arg
+                this.emit('profile-changed', this.#activeProfile);
+            }
+            // changed must be emitted with ZERO args (per runtime error)
+            this.emit('changed');
             return;
         }
 
         // Check if we have a manually requested profile
         if (this.#requestedProfile) {
+            const prev = this.#activeProfile;
             this.#activeProfile = this.#requestedProfile;
-            this.emit('profile-changed');
+            if (prev !== this.#activeProfile) {
+                this.emit('profile-changed', this.#activeProfile);
+            }
+            this.emit('changed');
             return;
         }
 
@@ -240,11 +253,18 @@ class TLP extends Service {
 
             if (newProfile !== this.#activeProfile) {
                 this.#activeProfile = newProfile;
+                // Emit with argument to satisfy signal definition
+                this.emit('profile-changed', this.#activeProfile);
+                // 'changed' carries no args
                 this.emit('changed');
             }
         } catch (error) {
             console.error('Error updating TLP profile:', error);
+            const prev = this.#activeProfile;
             this.#activeProfile = 'unknown';
+            if (prev !== this.#activeProfile) {
+                this.emit('profile-changed', this.#activeProfile);
+            }
             this.emit('changed');
         }
     }
