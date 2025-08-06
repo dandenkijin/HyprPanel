@@ -86,23 +86,44 @@
   }
 
   .menu-slider.brightness {
+    // Keep a single consistent trough background in both normal and hover states
     trough {
       background: if($bar-menus-monochrome, $bar-menus-slider-background, $bar-menus-menu-battery-slider-background);
 
+      // Use a single progress/highlight color for the filled portion
       highlight,
       progress {
         background: if($bar-menus-monochrome, $bar-menus-slider-primary, $bar-menus-menu-battery-slider-primary);
       }
     }
 
+    // Remove hover color shift on trough to avoid dual-tone effect on mouseover
     &:hover {
       trough {
-        background: if($bar-menus-monochrome, $bar-menus-slider-backgroundhover, $bar-menus-menu-battery-slider-backgroundhover);
+        background: if($bar-menus-monochrome, $bar-menus-slider-background, $bar-menus-menu-battery-slider-background);
       }
 
+      // Keep puck color consistent on hover as well
+      // Darken the puck to improve contrast
       slider {
-        background: if($bar-menus-monochrome, $bar-menus-slider-puck, $bar-menus-menu-battery-slider-puck);
+        background: if(
+          $bar-menus-monochrome,
+          darken($bar-menus-slider-puck, 20%),
+          darken($bar-menus-menu-battery-slider-puck, 20%)
+        );
       }
+    }
+  }
+
+  // Ensure the brightness slider puck is always visible (not only on hover)
+  .menu-slider.brightness {
+    slider {
+      background: if(
+        $bar-menus-monochrome,
+        darken($bar-menus-slider-puck, 20%),
+        darken($bar-menus-menu-battery-slider-puck, 20%)
+      );
+      box-shadow: none;
     }
   }
 }
