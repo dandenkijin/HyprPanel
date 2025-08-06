@@ -1,0 +1,133 @@
+const { Box, Button, Label, Icon } = Widget;
+import { uptime } from 'lib/variables.js';
+
+type TLPProfile = 'ac' | 'battery' | 'usb' | 'unknown';
+
+// Import TLP service
+const tlp = (await import('../../../services/tlp')).default;
+
+// Make TLP available globally for debugging
+declare global {
+    const TLP: typeof tlp;
+}
+
+Object.assign(globalThis, { TLP: tlp });
+
+const renderUptime = (curUptime: number): string => {
+    const days = Math.floor(curUptime / (60 * 24));
+    const hours = Math.floor((curUptime % (60 * 24)) / 60);
+    const minutes = Math.floor(curUptime % 60);
+    return ` : ${days}d ${hours}h ${minutes}m`;
+};
+
+const profileIcons = {
+    ac: 'ac-adapter-symbolic',
+    battery: 'battery-level-100-symbolic',
+    usb: 'network-wired-symbolic', // Fallback icon if usb-symbolic is not available
+    unknown: 'battery-missing-symbolic',
+} as const;
+
+const profileLabels = {
+    ac: 'AC Power',
+    battery: 'Battery Life',
+    usb: 'USB Power',
+    unknown: 'Unknown',
+} as const;
+
+export const TLPProfiles = () => {
+    // If TLP is not available, show a message
+    if (!tlp.is_available) {
+        return Box({
+            class_name: 'tlp-unavailable',
+            vertical: true,
+            hpack: 'fill',
+            hexpand: true,
+            children: [
+                Label({
+                    label: 'TLP not available',
+                    hpack: 'center',
+                    className: 'error-message',
+                }),
+                Label({
+                    label: 'Install and configure TLP for power management',
+                    hpack: 'center',
+                    className: 'hint',
+                })
+            ],
+        });
+    }
+
+    const createProfileButton = (profile: TLPProfile) => {
+        return Button({
+            class_name: 'power-profile-item',
+            child: Box({
+                class_name: 'power-profile-content',
+                children: [
+                    Box({
+                        class_name: 'power-profile-icon',
+                        child: Icon({
+                            icon: profileIcons[profile] || profileIcons.unknown,
+                            size: 24,
+                        }),
+                    }),
+                    Box({
+                        class_name: 'power-profile-label',
+                        vertical: true,
+                        children: [
+                            Label({
+                                class_name: 'power-profile-name',
+                                label: profileLabels[profile] || profile,
+                                hpack: 'start',
+                            }),
+                        ],
+                    }),
+                ],
+            }),
+            setup: (self) => {
+                self.hook(tlp, () => {
+                    self.toggleClassName('active', tlp.active_profile === profile);
+                });
+            },
+            onClicked: () => {
+                if (tlp.active_profile !== profile) {
+                    tlp.setProfile(profile).catch(console.error);
+                }
+            },
+        });
+    };
+
+    return Box({
+        class_name: 'menu-section-container energy',
+        vertical: true,
+        children: [
+            Box({
+                class_name: 'menu-label-container',
+                hpack: 'fill',
+                children: [
+                    Label({
+                        class_name: 'menu-label',
+                        hexpand: true,
+                        hpack: 'start',
+                        label: 'Power Profile (TLP)',
+                    }),
+                    Label({
+                        class_name: 'menu-label uptime',
+                        label: uptime.bind().as(renderUptime),
+                        tooltipText: 'Uptime',
+                    }),
+                ],
+            }),
+            Box({
+                class_name: 'menu-items-section',
+                vpack: 'fill',
+                vexpand: true,
+                vertical: true,
+                children: [
+                    createProfileButton('ac'),
+                    createProfileButton('battery'),
+                    createProfileButton('usb'),
+                ],
+            }),
+        ],
+    });
+};

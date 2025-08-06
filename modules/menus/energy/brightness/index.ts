@@ -1,4 +1,4 @@
-import { BoxWidget } from 'lib/types/widget.js';
+import type { BoxWidget } from 'lib/types/widget.js';
 import brightness from '../../../../services/Brightness.js';
 import icons from '../../../icons/index.js';
 
@@ -31,16 +31,36 @@ const Brightness = (): BoxWidget => {
                             class_name: 'brightness-slider-icon',
                             icon: icons.brightness.screen,
                         }),
-                        Widget.Slider({
+                        Widget.Box({
+                            class_name: 'slider-container',
                             vpack: 'center',
                             vexpand: true,
-                            value: brightness.bind('screen'),
-                            class_name: 'menu-active-slider menu-slider brightness',
-                            draw_value: false,
                             hexpand: true,
-                            min: 0,
-                            max: 1,
-                            onChange: ({ value }) => (brightness.screen = value),
+                            children: [
+                                Widget.Slider({
+                                    class_name: 'menu-active-slider menu-slider brightness',
+                                    draw_value: false,
+                                    hexpand: true,
+                                    min: 0,
+                                    max: 1,
+                                    value: 0, // Initial value, will be set by the binding
+                                    setup: (self) => {
+                                        // Set up the binding after the widget is created
+                                        self.hook(brightness, (self) => {
+                                            const value = brightness.screen;
+                                            if (typeof value === 'number' && !Number.isNaN(value)) {
+                                                self.value = Math.max(0, Math.min(1, value));
+                                            }
+                                        }, 'notify::screen');
+                                    },
+                                    on_change: (self) => {
+                                        const value = self.value;
+                                        if (typeof value === 'number' && !Number.isNaN(value)) {
+                                            brightness.screen = value;
+                                        }
+                                    },
+                                }),
+                            ],
                         }),
                         Widget.Label({
                             vpack: 'center',

@@ -874,12 +874,12 @@ const options = mkOptions(OPTIONS, {
         scrollSpeed: opt(5),
         layouts: opt<BarLayout>({
             '1': {
-                left: ['dashboard', 'workspaces', 'windowtitle', 'memory'],
+                left: ['dashboard', 'workspaces', 'windowtitle', 'ram'],
                 middle: ['media'],
                 right: ['volume', 'clock', 'notifications'],
             },
             '2': {
-                left: ['dashboard', 'workspaces', 'windowtitle', 'memory'],
+                left: ['dashboard', 'workspaces', 'windowtitle', 'ram'],
                 middle: ['media'],
                 right: ['volume', 'clock', 'notifications'],
             },

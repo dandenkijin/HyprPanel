@@ -1,8 +1,9 @@
 import DropdownMenu from '../shared/dropdown/index.js';
-import { EnergyProfiles } from './profiles/index.js';
 import { Brightness } from './brightness/index.js';
-import { Attribute, Child } from 'lib/types/widget.js';
-import Window from 'types/widgets/window.js';
+import TLP from './tlp';
+import TLP_Service from '../../../services/tlp';
+import type { Attribute, Child } from 'lib/types/widget.js';
+import type Window from 'types/widgets/window.js';
 import options from 'options.js';
 
 export default (): Window<Child, Attribute> => {
@@ -18,7 +19,10 @@ export default (): Window<Child, Attribute> => {
                 hpack: 'fill',
                 hexpand: true,
                 class_name: 'menu-items-container energy',
-                children: [Brightness(), EnergyProfiles()],
+                children: [
+                    Brightness(),
+                    TLP(TLP_Service)
+                ],
             }),
         }),
     });

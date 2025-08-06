@@ -1,0 +1,163 @@
+import { execAsync } from 'resource:///com/github/Aylur/ags/utils.js';
+import Service from 'resource:///com/github/Aylur/ags/service.js';
+import GLib from 'gi://GLib';
+
+type TLPProfile = 'ac' | 'battery' | 'usb' | 'unknown';
+
+class TLP extends Service {
+    static {
+        Service.register(this, 
+            {},
+            {
+                'active-profile': ['string', 'r'],
+            }
+        );
+    }
+
+    #activeProfile: TLPProfile = 'unknown';
+    #isTLPAvailable = false;
+
+    get active_profile() {
+        return this.#activeProfile;
+    }
+
+    get is_available() {
+        return this.#isTLPAvailable;
+    }
+
+    #powerSourcePath = '/sys/class/power_supply/AC/online';
+    #batteryStatusPath = '/sys/class/power_supply/BAT0/status';
+    #batteryCapacityPath = '/sys/class/power_supply/BAT0/capacity';
+
+    #readFile(path: string): string {
+        try {
+            const [success, contents] = GLib.file_get_contents(path);
+            if (success) {
+                return new TextDecoder().decode(contents).trim();
+            }
+        } catch (error) {
+            console.error(`Error reading ${path}:`, error);
+        }
+        return '';
+    }
+
+    async #checkTLP() {
+        try {
+            // Check if we can read power source info
+            const acOnline = this.#readFile(this.#powerSourcePath);
+            if (acOnline === '') {
+                throw new Error('Cannot read power source status');
+            }
+            
+            this.#isTLPAvailable = true;
+            return true;
+        } catch (error) {
+            console.log('TLP is not available or not working correctly. Power profile management will be disabled.');
+            console.log('Error details:', error);
+            this.#isTLPAvailable = false;
+            return false;
+        }
+    }
+
+    async #updateProfile() {
+        if (!this.#isTLPAvailable) {
+            this.#activeProfile = 'unknown';
+            return;
+        }
+
+        try {
+            // Read power source and battery status
+            const acOnline = this.#readFile(this.#powerSourcePath) === '1';
+            const batteryStatus = this.#readFile(this.#batteryStatusPath).toLowerCase();
+            const batteryPercent = Number.parseInt(this.#readFile(this.#batteryCapacityPath), 10) || 0;
+
+            console.log(`Power source - AC: ${acOnline}, Battery: ${batteryStatus} ${batteryPercent}%`);
+            
+            // Determine profile based on power source and battery status
+            if (acOnline) {
+                this.#activeProfile = 'ac';
+            } else if (batteryStatus.includes('discharg')) {
+                this.#activeProfile = 'battery';
+            } else if (batteryStatus.includes('charg')) {
+                this.#activeProfile = 'usb';
+            } else {
+                this.#activeProfile = 'unknown';
+            }
+            } catch (error) {
+                console.error('Error running tlp-stat:', error);
+                // Try to get more detailed error information
+                try {
+                    const versionOutput = await execAsync(`${this.#tlpStatPath} --version 2>&1`);
+                    console.log('TLP Version:', versionOutput);
+                } catch (versionError) {
+                    console.error('Could not get TLP version:', versionError);
+                }
+                this.#activeProfile = 'unknown';
+                return;
+            }
+            
+            // Parse the output to find the power profile
+            const match = output.match(/TLP power\s*[:=]\s*(\w+)/i);
+            if (match?.[1]) {
+                const profile = match[1].toLowerCase() as TLPProfile;
+                
+                if (['ac', 'battery', 'usb'].includes(profile)) {
+                    if (this.#activeProfile !== profile) {
+                        this.#activeProfile = profile;
+                        this.emit('changed');
+                    }
+                } else {
+                    console.log(`Unexpected TLP profile: ${profile}`);
+                    this.#activeProfile = 'unknown';
+                }
+            } else {
+                console.log('Could not determine TLP profile from output:', output);
+                this.#activeProfile = 'unknown';
+            }
+        } catch (error) {
+            console.error('Error getting TLP profile:', error);
+            this.#activeProfile = 'unknown';
+        }
+    }
+
+    async setProfile(profile: TLPProfile) {
+        if (!this.#isTLPAvailable) {
+            console.error('Cannot set profile: TLP is not available');
+            return false;
+        }
+
+        try {
+            if (!['ac', 'battery', 'usb'].includes(profile)) {
+                throw new Error(`Invalid profile: ${profile}`);
+            }
+            
+            // Use polkit with the system's authentication agent
+            await execAsync(`pkexec --disable-internal-agent ${this.#tlpStatPath} ac set ${profile}`);
+            await this.#updateProfile();
+            return true;
+        } catch (error) {
+            console.error('Error setting TLP profile:', error);
+            return false;
+        }
+    }
+
+    #poll() {
+        if (this.#isTLPAvailable) {
+            this.#updateProfile().finally(() => {
+                setTimeout(() => this.#poll(), 5000); // Update every 5 seconds
+            });
+        } else {
+            // Check less frequently if TLP is not available
+            setTimeout(() => this.#poll(), 30000);
+        }
+    }
+
+    constructor() {
+        super();
+        this.#checkTLP().then(() => this.#poll());
+    }
+}
+
+const tlp = new TLP();
+
+export default tlp;
