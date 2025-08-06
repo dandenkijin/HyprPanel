@@ -16,7 +16,52 @@ import options from 'options.js';
 import OSD from 'modules/osd/index';
 
 App.config({
-    onConfigParsed: () => Utils.execAsync(`python3 ${App.configDir}/services/bluetooth.py`),
+    onConfigParsed: async () => {
+        try {
+            // Check if BlueZ is available by looking for the D-Bus service
+            const checkBlueZ = async (): Promise<boolean> => {
+                try {
+                    // Try systemd first
+                    try {
+                        const { exitCode } = await Utils.execAsync('command -v systemctl')
+                            .then(() => Utils.execAsync('systemctl is-active --quiet bluetooth'))
+                            .then(() => ({ exitCode: 0 }))
+                            .catch(() => ({ exitCode: 1 }));
+                        
+                        return exitCode === 0;
+                    } catch (e) {
+                        // If systemctl check fails, try direct D-Bus check
+                        const { exitCode } = await Utils.execAsync('dbus-send --system --dest=org.freedesktop.DBus --type=method_call --print-reply /org/freedesktop/DBus org.freedesktop.DBus.ListNames')
+                            .then(output => {
+                                // Check if org.bluez is in the list of services
+                                return { 
+                                    exitCode: output.includes('org.bluez') ? 0 : 1 
+                                };
+                            })
+                            .catch(() => ({ exitCode: 1 }));
+                        
+                        return exitCode === 0;
+                    }
+                } catch (error) {
+                    console.log('Error checking for BlueZ:', error);
+                    return false;
+                }
+            };
+            
+            const isBlueZAvailable = await checkBlueZ();
+            
+            if (isBlueZAvailable) {
+                // Only start the Bluetooth service if BlueZ is running
+                await Utils.execAsync(`python3 ${App.configDir}/services/bluetooth.py`)
+                    .catch(err => console.error('Error in bluetooth service:', err));
+            } else {
+                console.log('Bluetooth service (BlueZ) is not available, skipping initialization');
+            }
+        } catch (error) {
+            console.error('Error checking Bluetooth status:', error);
+            console.log('Bluetooth service will be disabled');
+        }
+    },
     windows: [...MenuWindows, Notifications(), SettingsDialog(), ...forMonitors(Bar), OSD()],
     closeWindowDelay: {
         sideright: 350,

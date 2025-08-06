@@ -1,7 +1,7 @@
 import { opt, mkOptions } from 'lib/option';
-import { NetstatLabelType, RateUnit, ResourceLabelType } from 'lib/types/bar';
-import { KbLabelType } from 'lib/types/customModules/kbLayout';
-import {
+import type { NetstatLabelType, RateUnit, ResourceLabelType } from 'lib/types/bar';
+import type { KbLabelType } from 'lib/types/customModules/kbLayout';
+import type {
     ActiveWsIndicator,
     BarButtonStyles,
     BarLayout,
@@ -14,11 +14,11 @@ import {
     ScalingPriority,
     WindowLayer,
 } from 'lib/types/options';
-import { MatugenScheme, MatugenTheme, MatugenVariations } from 'lib/types/options';
-import { SystrayIconMap } from 'lib/types/systray';
-import { UnitType } from 'lib/types/weather';
-import { Transition } from 'lib/types/widget';
-import { ApplicationIcons, WorkspaceIcons, WorkspaceIconsColored } from 'lib/types/workspace';
+import type { MatugenScheme, MatugenTheme, MatugenVariations } from 'lib/types/options';
+import type { SystrayIconMap } from 'lib/types/systray';
+import type { UnitType } from 'lib/types/weather';
+import type { Transition } from 'lib/types/widget';
+import type { ApplicationIcons, WorkspaceIcons, WorkspaceIconsColored } from 'lib/types/workspace';
 
 // WARN: CHANGING THESE VALUES WILL PREVENT MATUGEN COLOR GENERATION FOR THE CHANGED VALUE
 export const colors = {
@@ -288,6 +288,15 @@ const options = mkOptions(OPTIONS, {
                     spacing: opt('0.5em'),
                 },
                 modules: {
+                    memory: {
+                        enableBorder: opt(false),
+                        border: opt(colors.mauve),
+                        background: opt(colors.base2),
+                        text: opt(colors.mauve),
+                        icon: opt(colors.mauve),
+                        icon_background: opt(colors.base2),
+                        spacing: opt('0.45em'),
+                    },
                     ram: {
                         enableBorder: opt(false),
                         border: opt(colors.yellow),
@@ -865,17 +874,22 @@ const options = mkOptions(OPTIONS, {
         scrollSpeed: opt(5),
         layouts: opt<BarLayout>({
             '1': {
-                left: ['dashboard', 'workspaces', 'windowtitle'],
+                left: ['dashboard', 'workspaces', 'windowtitle', 'memory'],
                 middle: ['media'],
                 right: ['volume', 'clock', 'notifications'],
             },
             '2': {
-                left: ['dashboard', 'workspaces', 'windowtitle'],
+                left: ['dashboard', 'workspaces', 'windowtitle', 'memory'],
                 middle: ['media'],
                 right: ['volume', 'clock', 'notifications'],
             },
             '0': {
-                left: ['dashboard', 'workspaces', 'windowtitle'],
+                left: ['dashboard', 'workspaces', 'windowtitle', 'memory'],
+                middle: ['media'],
+                right: ['volume', 'network', 'bluetooth', 'battery', 'systray', 'clock', 'notifications'],
+            },
+            '*': {
+                left: ['dashboard', 'workspaces', 'windowtitle', 'memory'],
                 middle: ['media'],
                 right: ['volume', 'network', 'bluetooth', 'battery', 'systray', 'clock', 'notifications'],
             },
@@ -903,16 +917,23 @@ const options = mkOptions(OPTIONS, {
             scrollDown: opt(''),
         },
         workspaces: {
-            show_icons: opt(false),
+            show_icons: opt(true),
             showAllActive: opt(true),
             ignored: opt(''),
             show_numbered: opt(false),
             showWsIcons: opt(false),
-            showApplicationIcons: opt(false),
+            showApplicationIcons: opt(true),
             applicationIconOncePerWorkspace: opt(true),
-            applicationIconMap: opt<ApplicationIcons>({}),
-            applicationIconFallback: opt('󰣆'),
-            applicationIconEmptyWorkspace: opt(''),
+            applicationIconMap: opt<ApplicationIcons>({
+                'ghostty': '',
+                'vivaldi-bin': '󰆍', // Vivaldi's actual binary name
+                'winsurf': '󰖟',
+                'firefox': '󰈹',
+                'thunar': '󰉋',
+                'code': '󰨞'
+            }),
+            applicationIconEmptyWorkspace: opt('零'),
+            applicationIconFallback: opt('幅'),
             numbered_active_indicator: opt<ActiveWsIndicator>('underline'),
             icons: {
                 available: opt(''),
@@ -993,6 +1014,19 @@ const options = mkOptions(OPTIONS, {
         },
         customModules: {
             scrollSpeed: opt(5),
+            memory: {
+                ramIcon: opt('󰍛'),
+                swapIcon: opt('󰯅'),
+                ramLabel: opt(true),
+                swapLabel: opt(true),
+                ramLabelType: opt<ResourceLabelType>('percentage'),
+                swapLabelType: opt<ResourceLabelType>('percentage'),
+                round: opt(true),
+                pollingInterval: opt(2000),
+                leftClick: opt(''),
+                rightClick: opt(''),
+                middleClick: opt(''),
+            },
             ram: {
                 icon: opt(''),
                 label: opt(true),
@@ -1283,5 +1317,5 @@ const options = mkOptions(OPTIONS, {
     dummy: opt(true),
 });
 
-globalThis['options'] = options;
+globalThis.options = options;
 export default options;
