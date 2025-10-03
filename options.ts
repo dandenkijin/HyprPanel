@@ -8,13 +8,15 @@ import type {
     BarLocation,
     BluetoothBatteryState,
     BorderLocation,
+    MatugenScheme,
+    MatugenTheme,
+    MatugenVariations,
     NotificationAnchor,
     OSDAnchor,
     OSDOrientation,
     ScalingPriority,
     WindowLayer,
 } from 'lib/types/options';
-import type { MatugenScheme, MatugenTheme, MatugenVariations } from 'lib/types/options';
 import type { SystrayIconMap } from 'lib/types/systray';
 import type { UnitType } from 'lib/types/weather';
 import type { Transition } from 'lib/types/widget';
@@ -1162,7 +1164,7 @@ const options = mkOptions(OPTIONS, {
             hideAlbum: opt(false),
             displayTime: opt(false),
             displayTimeTooltip: opt(false),
-            noMediaText: opt('No Media Currently Playing'),
+            noMediaText: opt('Enjoy the Silence'),
         },
         bluetooth: {
             showBattery: opt(false),

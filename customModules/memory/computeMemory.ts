@@ -1,8 +1,8 @@
 const GLib = imports.gi.GLib;
 
 import { divide } from 'customModules/utils';
-import { GenericResourceData } from 'lib/types/customModules/generic';
-import { Variable as VariableType } from 'types/variable';
+import type { GenericResourceData } from 'lib/types/customModules/generic';
+import type { Variable as VariableType } from 'types/variable';
 
 export const calculateMemoryUsage = (round: VariableType<boolean>): {ram: GenericResourceData, swap: GenericResourceData} => {
     try {
@@ -27,13 +27,13 @@ export const calculateMemoryUsage = (round: VariableType<boolean>): {ram: Generi
         }
 
         // Convert KB to bytes
-        const convert = (kb: string) => parseInt(kb, 10) * 1024;
+        const convert = (kb: string) => Number.parseInt(kb, 10) * 1024;
 
         // RAM data
         const totalRam = convert(totalRamMatch[1]);
         const availableRam = convert(availableRamMatch[1]);
         let usedRam = totalRam - availableRam;
-        usedRam = isNaN(usedRam) || usedRam < 0 ? 0 : usedRam;
+        usedRam = Number.isNaN(usedRam) || usedRam < 0 ? 0 : usedRam;
 
         // Swap data
         const totalSwap = convert(totalSwapMatch[1]);

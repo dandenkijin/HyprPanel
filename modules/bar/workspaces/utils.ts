@@ -3,7 +3,7 @@ import type { ClientAttributes, AppIconOptions, WorkspaceIconMap } from 'lib/typ
 import { isValidGjsColor } from 'lib/utils';
 import options from 'options';
 import { Monitor } from 'types/service/hyprland';
-
+import Service from 'resource:///com/github/Aylur/ags/service.js';
 const hyprland = await Service.import('hyprland');
 
 const { monochrome, background } = options.theme.bar.buttons;

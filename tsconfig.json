@@ -4,7 +4,7 @@
         "allowImportingTsExtensions": true,
         "target": "ES2022",
         "module": "ES2022",
-        "lib": ["ES2022"],
+        "lib": ["ES2022", "DOM"],
         "allowJs": true,
         "checkJs": false,
         "strict": true,
@@ -15,7 +15,16 @@
         "baseUrl": ".",
         "typeRoots": ["types", "lib/types/globals"],
         "skipLibCheck": true,
-        "types": []
+        "types": [],
+        "paths": {
+            "customModules/*": ["./customModules/*"]
+        }
     },
-    "exclude": ["types/@girs/**/*.js"]
+    "include": [
+        "./customModules/*/*.ts"
+    ],
+    "exclude": [
+        "types/@girs/**/*.js",
+        "node_modules"
+    ]
 }

@@ -1,11 +1,12 @@
-const GLib = imports.gi.GLib;
-
 import { divide } from 'customModules/utils';
-import { GenericResourceData } from 'lib/types/customModules/generic';
-import { Variable as VariableType } from 'types/variable';
+import type { GenericResourceData } from 'lib/types/customModules/generic';
+// Import GLib from @girs
+import GLib from 'gi://GLib?version=2.0';
+import type { Variable as VariableType } from 'types/variable';
 
 // FIX: Consolidate with Ram service class
 export const calculateRamUsage = (round: VariableType<boolean>): GenericResourceData => {
+    const shouldRound = round.value;
     try {
         const [success, meminfoBytes] = GLib.file_get_contents('/proc/meminfo');
 
@@ -13,7 +14,10 @@ export const calculateRamUsage = (round: VariableType<boolean>): GenericResource
             throw new Error('Failed to read /proc/meminfo or file content is null.');
         }
 
+        // const decoder = new TextDecoder('utf-8');
+        // const meminfo = decoder.decode(meminfoBytes);
         const meminfo = new TextDecoder('utf-8').decode(meminfoBytes);
+
 
         const totalMatch = meminfo.match(/MemTotal:\s+(\d+)/);
         const availableMatch = meminfo.match(/MemAvailable:\s+(\d+)/);
@@ -22,14 +26,14 @@ export const calculateRamUsage = (round: VariableType<boolean>): GenericResource
             throw new Error('Failed to parse /proc/meminfo for memory values.');
         }
 
-        const totalRamInBytes = parseInt(totalMatch[1], 10) * 1024;
-        const availableRamInBytes = parseInt(availableMatch[1], 10) * 1024;
+        const totalRamInBytes = Number.parseInt(totalMatch[1], 10) * 1024;
+        const availableRamInBytes = Number.parseInt(availableMatch[1], 10) * 1024;
 
         let usedRam = totalRamInBytes - availableRamInBytes;
-        usedRam = isNaN(usedRam) || usedRam < 0 ? 0 : usedRam;
+        usedRam = Number.isNaN(usedRam) || usedRam < 0 ? 0 : usedRam;
 
         return {
-            percentage: divide([totalRamInBytes, usedRam], round.value),
+            percentage: divide([totalRamInBytes, usedRam], shouldRound),
             total: totalRamInBytes,
             used: usedRam,
             free: availableRamInBytes,
